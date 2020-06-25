@@ -1,3 +1,5 @@
+# Author: Drake Wagner
+
 # Analyze the data set and prepare a set of findings to present to the team and 
 # school principals. 
 # Convert scores to proficiency levels
@@ -232,3 +234,9 @@ ggplot(data=boy_eoy_by_grade, aes(x=test, y=len, group=grade)) +
   geom_point()
 
 
+# Anova test for significance or Multiple regression model
+
+whole_school_regression <- lm(difference~`School Name`+grade, data=school_data)
+summary(whole_school_regression)
+
+fit2 <- lm(difference ~ grade, school_data)
