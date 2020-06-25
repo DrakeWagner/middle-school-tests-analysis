@@ -5,6 +5,7 @@
 setwd('/home/drake/R')
 library("readxl")
 library('dplyr')
+library('ggplot2')
 
 school_data <- read_excel('F&P Sample Data Set.xlsx')
 # ID, School name, Beginning of year score, End of year score
@@ -115,5 +116,119 @@ school_data <- school_data %>%
   ))
 # set difference column as an integer for future calculations
 school_data$difference = as.integer(school_data$difference)
+
+# plotting the differences in proficiency over the year
+ggplot(school_data, aes(x=difference)) + 
+  geom_bar(width=.5, fill="blue") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  labs(title="Proficiency Difference", 
+       subtitle="Difference between BOY and EOY proficiency levels",
+       y = '# of Students',
+       x = 'Difference in Proficiency Levels',
+       caption='F&P Proficiency')
+
+school_data_bushwick <- school_data %>%
+  filter(`School Name`=="Bushwick Middle School")
+
+school_data_crown <- school_data %>%
+  filter(`School Name`=="Crown Heights Middle School")
+
+# We can clearly see that this is skewed right
+ggplot(school_data_bushwick, aes(x=difference)) + 
+  geom_bar(width=.5, fill="red") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  labs(title="Proficiency Difference: Bushwick", 
+       y = '# of Students',
+       x = 'Difference in Proficiency Levels',
+       caption='F&P Proficiency')
+
+# Visually, this appears skewed slightly to the left
+ggplot(school_data_crown, aes(x=difference)) + 
+  geom_bar(width=.5, fill="green") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 05)) +
+  labs(title="Proficiency Difference: Crown Heights", 
+       y = '# of Students',
+       x = 'Difference in Proficiency Levels',
+       caption='F&P Proficiency')
+
+
+##### p value and analysis between the two schools' improvements
+
+# Here, I take the two data frames I created of the separate schools and select
+# only the student ids that have "proficient" or "advanced" scores recorded for
+# the end of year tests, assuming EOY scores are our most current data...
+num_prof_bush <- school_data_bushwick %>%
+  filter(eoy_proficiency == 'proficient' | eoy_proficiency == 'advanced')
+
+num_prof_crown <- school_data_crown %>%
+  filter(eoy_proficiency == 'proficient' | eoy_proficiency == 'advanced')
+
+# Now I calculate the percentage of students who recorded "proficient" or 
+# "advanced" end of year scores. We see that Crown has a higher percentage
+# than Bushwick does (71.27% and 78.41%, respectively)
+percent_prof_bush <- nrow(num_prof_bush)/nrow(school_data_bushwick)
+percent_prof_crown <- nrow(num_prof_crown)/nrow(school_data_crown)
+
+# same thing with boy
+num_prof_bush_boy <- school_data_bushwick %>%
+  filter(boy_proficiency == 'proficient' | boy_proficiency == 'advanced')
+
+num_prof_crown_boy <- school_data_crown %>%
+  filter(boy_proficiency == 'proficient' | boy_proficiency == 'advanced')
+
+percent_prof_bush_boy <- nrow(num_prof_bush_boy)/nrow(school_data_bushwick)
+percent_prof_crown_boy <- nrow(num_prof_crown_boy)/nrow(school_data_crown)
+
+# Here I make a graph to visualize the improvement in test scores over the
+# course of the year, by school.
+boy_eoy_by_school <- data.frame(school=rep(c('Bushwick', 'Crown'), each=2),
+                                test=rep(c('BOY', 'EOY'), 2),
+                                len=c(percent_prof_bush_boy, percent_prof_bush,
+                                      percent_prof_crown_boy, percent_prof_crown))
+ggplot(data=boy_eoy_by_school, aes(x=test, y=len, group=school)) +
+  ylab('Percent Proficient') +
+  xlab('Test Date') +
+  geom_line(aes(linetype=school, color=school)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  geom_point()
+
+# Now I want to see the trends according to the grade level. Again, I filter the
+# dataset to only contain those who tested proficient or advanced, but instead of
+# grouping by school, I group by grade
+by_grade_5 <- school_data %>%
+  filter(grade == '5.0')
+by_grade_6 <- school_data %>%
+  filter(grade == '6.0')
+
+
+num_prof_5_boy <- school_data %>%
+  filter((boy_proficiency == 'proficient' | boy_proficiency == 'advanced') & grade == '5.0')
+num_prof_5_eoy <- school_data %>%
+  filter((eoy_proficiency == 'proficient' | eoy_proficiency == 'advanced') & grade == '5.0')
+
+# percent of 5th graders that are proficient, by test
+percent_prof_5_boy <- nrow(num_prof_5_boy)/nrow(by_grade_5)
+percent_prof_5_eoy <- nrow(num_prof_5_eoy)/nrow(by_grade_5)
+  
+num_prof_6_boy <- school_data %>%
+  filter((boy_proficiency == 'proficient' | boy_proficiency == 'advanced') & grade == '6.0')
+num_prof_6_eoy <- school_data %>%
+  filter((eoy_proficiency == 'proficient' | eoy_proficiency == 'advanced') & grade == '6.0')
+
+# percent of 6th graders that are proficient, by test
+percent_prof_6_boy <- nrow(num_prof_6_boy)/nrow(by_grade_6)
+percent_prof_6_eoy <- nrow(num_prof_6_eoy)/nrow(by_grade_6)
+
+boy_eoy_by_grade <- data.frame(grade=rep(c('5th', '6th'), each=2),
+                               test=rep(c('BOY', 'EOY'), 2),
+                               len=c(percent_prof_5_boy, percent_prof_5_eoy,
+                                      percent_prof_6_boy, percent_prof_6_eoy))
+
+ggplot(data=boy_eoy_by_grade, aes(x=test, y=len, group=grade)) +
+  ylab('Percent Proficient') +
+  xlab('Test Date') +
+  geom_line(aes(linetype=grade, color=grade)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  geom_point()
 
 
