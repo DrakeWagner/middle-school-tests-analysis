@@ -4,7 +4,8 @@
 # school principals. 
 # Convert scores to proficiency levels
 
-setwd('/home/drake/R')
+#setwd('/home/drake/R')
+setwd('C:\\Users\\dwagn\\Downloads\\R')
 library("readxl")
 library('dplyr')
 library('ggplot2')
@@ -16,9 +17,9 @@ school_data <- read_excel('F&P Sample Data Set.xlsx')
 # every id would vary. This will allow us to easily see any misspellings or 
 # differences in how values were recorded (for example, "5.0" vs. "5th")
 unique_values <- apply(school_data[, c('School Name', 
-                      'Grade Level', 
-                      'BOY F&P Score', 
-                      'EOY F&P Score')], 2, unique)
+                                       'Grade Level', 
+                                       'BOY F&P Score', 
+                                       'EOY F&P Score')], 2, unique)
 # places the scores in numerical order and assigns them as integers
 unique_values$`BOY F&P Score`=sort(as.integer(unique_values$`BOY F&P Score`))
 unique_values$`EOY F&P Score`=sort(as.integer(unique_values$`EOY F&P Score`))
@@ -28,6 +29,7 @@ unique_values
 school_data <- school_data %>%
   rename(boy_score = 'BOY F&P Score',
          eoy_score = 'EOY F&P Score',
+         school = 'School Name',
          grade = 'Grade Level')
 
 # remove NA values
@@ -39,23 +41,23 @@ school_data$grade[grepl(
   '5',school_data$grade)] <- '5.0'
 school_data$grade[grepl(
   '6',school_data$grade)] <- '6.0'
-school_data$`School Name`[grepl(
-  'Bush',school_data$`School Name`)] <-'Bushwick Middle School'
-school_data$`School Name`[grepl(
-  'Crown',school_data$`School Name`)] <- 'Crown Heights Middle School'
+school_data$school[grepl(
+  'Bush',school_data$school)] <-'Bushwick Middle School'
+school_data$school[grepl(
+  'Crown',school_data$school)] <- 'Crown Heights Middle School'
 
 # Another way this could have been done without additional packages:
 #school_data$`Grade Level`[school_data$`Grade Level`=='5th'] <- '5.0'
 #school_data$`Grade Level`[school_data$`Grade Level`=='6th'] <- '6.0'
 
 # Now a quick double check to make sure the values have been replaced:
-unique_values_2 <- apply(school_data[, c('School Name', 
-                                       'Grade Level', 
-                                       'boy_score', 
-                                       'eoy_score')], 2, unique)
+unique_values_2 <- apply(school_data[, c('school', 
+                                         'grade', 
+                                         'boy_score', 
+                                         'eoy_score')], 2, unique)
 unique_values_2$`boy_score`=sort(as.integer(unique_values_2$`boy_score`))
 unique_values_2$`eoy_score`=sort(as.integer(unique_values_2$`eoy_score`))
-c(unique_values_2$`School Name`, unique_values_2$`Grade Level`)
+c(unique_values_2$school, unique_values_2$grade)
 
 # potential 'ifelse' way of computing proficiency
 # school_data <- school_data %>%
@@ -83,6 +85,15 @@ school_data <- school_data %>%
     boy_score >= 16 & grade == '6.0' ~ 'advanced'
   ))
 
+# Adds the is_prof column (1=proficient, 0=not proficient), according to eoy scores
+school_data <- school_data %>%
+  mutate(is_prof = case_when(
+    eoy_score <15 & grade == '5.0' ~ 0,
+    eoy_score >=15 & grade == '5.0'~ 1,
+    eoy_score <18 & grade == '6.0' ~ 0,
+    eoy_score >=18 & grade == '6.0' ~ 1
+  ))
+
 
 school_data <- school_data %>%
   mutate(eoy_proficiency = case_when(
@@ -98,7 +109,7 @@ school_data <- school_data %>%
 
 
 # improvement column
-# I am listing the difference as an integer, where each integer is the difference
+# List the difference as an integer, where each integer is the difference
 # of one proficiency level
 school_data <- school_data %>%
   mutate(difference = case_when(
@@ -119,6 +130,18 @@ school_data <- school_data %>%
 # set difference column as an integer for future calculations
 school_data$difference = as.integer(school_data$difference)
 
+
+
+
+
+
+
+
+
+
+
+
+
 # plotting the differences in proficiency over the year
 ggplot(school_data, aes(x=difference)) + 
   geom_bar(width=.5, fill="blue") +
@@ -130,16 +153,16 @@ ggplot(school_data, aes(x=difference)) +
        caption='F&P Proficiency')
 
 school_data_bushwick <- school_data %>%
-  filter(`School Name`=="Bushwick Middle School")
+  filter(school=="Bushwick Middle School")
 
 school_data_crown <- school_data %>%
-  filter(`School Name`=="Crown Heights Middle School")
+  filter(school=="Crown Heights Middle School")
 
 # We can clearly see that this is skewed right
 ggplot(school_data_bushwick, aes(x=difference)) + 
   geom_bar(width=.5, fill="red") +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  labs(title="Proficiency Difference: Bushwick", 
+  labs(title="Proficiency Difference Over the Year: Bushwick", 
        y = '# of Students',
        x = 'Difference in Proficiency Levels',
        caption='F&P Proficiency')
@@ -148,13 +171,42 @@ ggplot(school_data_bushwick, aes(x=difference)) +
 ggplot(school_data_crown, aes(x=difference)) + 
   geom_bar(width=.5, fill="green") +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 05)) +
-  labs(title="Proficiency Difference: Crown Heights", 
+  labs(title="Proficiency Difference Over the Year: Crown Heights", 
        y = '# of Students',
        x = 'Difference in Proficiency Levels',
        caption='F&P Proficiency')
 
 
-##### p value and analysis between the two schools' improvements
+# Here I look more at final proficiency levels (eoy)
+
+ggplot(school_data, aes(x=factor(school_data$eoy_proficiency, #Quick reordering of levels...
+                                 levels = c('remedial', 'below proficient', 'proficient', 'advanced')))) +
+  labs(title='Student Proficiencies',
+       x='Proficiency Level',
+       y= '# of Students') +
+  geom_bar(color="lime green", fill="dark green") +
+  theme_minimal()
+
+# And by school...
+
+ggplot(school_data_bushwick, aes(x=factor(school_data_bushwick$eoy_proficiency, #Quick reordering of levels...
+                                 levels = c('remedial', 'below proficient', 'proficient', 'advanced')))) +
+  labs(title='Student Proficiencies: Bushwick',
+       x='Proficiency Level',
+       y= '# of Students') +
+  geom_bar(color='blue', fill="dark red") +
+  theme_minimal()
+
+ggplot(school_data_crown, aes(x=factor(school_data_crown$eoy_proficiency, #Quick reordering of levels...
+                                 levels = c('remedial', 'below proficient', 'proficient', 'advanced')))) +
+  labs(title='Student Proficiencies: Crown Heights',
+       x='Proficiency Level',
+       y= '# of Students') +
+  geom_bar(color='red', fill="dark blue") +
+  theme_minimal()
+
+
+
 
 # Here, I take the two data frames I created of the separate schools and select
 # only the student ids that have "proficient" or "advanced" scores recorded for
@@ -211,7 +263,7 @@ num_prof_5_eoy <- school_data %>%
 # percent of 5th graders that are proficient, by test
 percent_prof_5_boy <- nrow(num_prof_5_boy)/nrow(by_grade_5)
 percent_prof_5_eoy <- nrow(num_prof_5_eoy)/nrow(by_grade_5)
-  
+
 num_prof_6_boy <- school_data %>%
   filter((boy_proficiency == 'proficient' | boy_proficiency == 'advanced') & grade == '6.0')
 num_prof_6_eoy <- school_data %>%
@@ -221,22 +273,83 @@ num_prof_6_eoy <- school_data %>%
 percent_prof_6_boy <- nrow(num_prof_6_boy)/nrow(by_grade_6)
 percent_prof_6_eoy <- nrow(num_prof_6_eoy)/nrow(by_grade_6)
 
+
+# Now I combine the procifiency percent of 5th and 6th grade into a dataset, so that we can visualize it
 boy_eoy_by_grade <- data.frame(grade=rep(c('5th', '6th'), each=2),
                                test=rep(c('BOY', 'EOY'), 2),
                                len=c(percent_prof_5_boy, percent_prof_5_eoy,
-                                      percent_prof_6_boy, percent_prof_6_eoy))
+                                     percent_prof_6_boy, percent_prof_6_eoy))
 
 ggplot(data=boy_eoy_by_grade, aes(x=test, y=len, group=grade)) +
   ylab('Percent Proficient') +
   xlab('Test Date') +
-  geom_line(aes(linetype=grade, color=grade)) +
+  labs(title='Mean Test Scores by Grade',
+       subtitle='Between BOY and EOY Tests')+
+  geom_line(aes(linetype=grade, color=grade), size=1.2) +
   scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  geom_point()
+  theme(panel.background = element_rect(fill = "lightgreen",
+                                        color = "lightgreen",
+                                        size = 0.5, linetype = "solid"),
+                                        panel.grid.minor = element_blank()) + # removes grid subsets
+  geom_point(size=2)
 
 
-# Anova test for significance or Multiple regression model
 
-whole_school_regression <- lm(difference~`School Name`+grade, data=school_data)
-summary(whole_school_regression)
+# Further analysis shows a low, positive correlation between the student's grade and their difference. That is,
+# 6th graders tend to score better than 5th graders
+cor(as.integer(school_data$grade), school_data$difference)
 
-fit2 <- lm(difference ~ grade, school_data)
+# What if we look at each school individually...
+cor(as.integer(school_data_bushwick$grade), school_data_bushwick$difference)
+cor(as.integer(school_data_crown$grade), school_data_crown$difference)
+ 
+median(school_data_bushwick$boy_score)
+median(school_data_crown$boy_score)
+median(school_data_bushwick$eoy_score)
+median(school_data_crown$eoy_score)
+# While Bushwick's students test scores are positively correlated with their grade level, there appears to be
+# no correlation within Crown's student body.
+# Furthermore, despite Crown having a slightly higher median BOY test score than Bushwick, it appears that Buswick's improvement
+# is greater than Crown's (median test score up 3 over the year at Bushwick vs. up 1 over the year at Crown),
+# once again assuming that the EOY test is taken with the same students at the end of their school year.
+
+
+# Here I make another graph with almost identical syntax to the last, comparing
+# the mean scores by school this time rather than by grade. This will be a more
+# helpful comparison in answering the proposed questions
+meds <- data.frame(school=rep(c('Bushwick', 'Crown Heights'), each=2),
+                          test=rep(c('BOY', 'EOY'), 2),
+                               len=c(mean(school_data_bushwick$boy_score), mean(school_data_bushwick$eoy_score),
+                                     mean(school_data_crown$boy_score), mean(school_data_crown$eoy_score)))
+
+
+ggplot(data=meds, aes(x=test, y=len, group=school)) +
+  labs(title=" Mean Test Scores by School", 
+       subtitle=' Between BOY and EOY Tests',
+       y = 'Mean Score',
+       x = 'Test Date') +
+  geom_line(aes(color=school), size=1) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4)) +
+  theme(panel.background = element_rect(fill = "lightblue",
+                                        color = "lightblue",
+                                        size = 0.5, linetype = "solid"),
+                                        panel.grid.minor = element_blank()) +
+  geom_point(size=2)
+
+# Two-sample T-test
+# Find is difference in EOY scores is significantly different between the two schools
+# I finally use the "is_prof" column for this particular test. Once again, I assume that 
+# final proficiency is judged solely on the end of the year test
+
+t.test(school_data_bushwick$is_prof, school_data_crown$is_prof, alternative='two.sided', var.equal=FALSE)
+
+# While this is likely the most suitable type of significance testing that can be conducted between
+# the two groups, it cannot be taken too seriously, since these are not random samples from a larger population
+# However, assuming the samples from the two schools are independent without variance in the populations,
+# there does appear to be a significant difference between the two schools in procifiency, p<.05.
+
+nrow(school_data_bushwick)
+nrow(school_data_crown)
+
+percent_prof_bush
+percent_prof_crown
