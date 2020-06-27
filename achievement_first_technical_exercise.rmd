@@ -1,9 +1,10 @@
-# Author: Drake Wagner
-
-# Analyze the data set and prepare a set of findings to present to the team and 
-# school principals. 
-# Convert scores to proficiency levels
-
+---
+title: "achievement_first_technical_exercise.rmd"
+author: "Drake Wagner"
+date: "6/26/2020"
+output: pdf_document
+---
+```{r}
 #setwd('/home/drake/R')
 setwd('C:\\Users\\dwagn\\Downloads\\R')
 library("readxl")
@@ -429,5 +430,6 @@ nrow(school_data_crown %>%
 
 nrow(school_data_crown %>%
        filter(difference < 0)) # 36 regressed
+```
 
 
